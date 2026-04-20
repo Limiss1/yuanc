@@ -1,0 +1,27 @@
+17:37:33 - INFO - Enabled testnet mode for binance
+17:37:33 - INFO - PaperExchange (USDT Futures) initialized: balance={'USDT': Decimal('100.0')}, leverage=10x
+17:37:33 - INFO - No pre-trained model found, will train on first run
+17:37:33 - INFO - Risk manager initialized with max drawdown: 0.15
+17:37:33 - INFO - TradingEngine initialized: mode=PAPER, symbols=['BTC/USDT']
+17:37:33 - INFO - Trading engine started
+17:37:33 - INFO - Initial capital: 100.00
+17:37:33 - INFO - Balance initialized: {'USDT': Decimal('100.0')}
+C:\Users\ll552\Desktop\8ÏîÐÞ¸´\crypto-ai-trader-main\.venv\Lib\site-packages\xgboost\training.py:200: UserWarning: [17:37:36] WARNING: C:\actions-runner\_work\xgboost\xgboost\src\learner.cc:782: 
+Parameters: { "use_label_encoder" } are not used.
+
+  bst.update(dtrain, iteration=i, fobj=obj)
+17:37:36 - INFO - Model saved to models\ai_trading_model.pkl
+17:37:36 - INFO - Model trained: accuracy=58.33%, samples=335
+17:37:36 - INFO - Model trained successfully: accuracy=58.33%, samples=335
+17:37:36 - INFO - [FUTURES] Signal: buy BTC/USDT confidence=51.20% -> OPEN LONG
+17:37:36 - INFO - [FUTURES] Order: buy 0.001332 BTC/USDT @ 75050.00 | margin=10.00 USDT, 10x | SL=74967.44, TP=75275.15
+17:37:36 - INFO - [PAPER] BUY LONG 0.001332445036642238507661558961 BTC/USDT @ 75050.00 (margin: 10.00 USDT, 10x)
+17:37:36 - INFO - [PAPER] Order executed: buy 0.001332 BTC/USDT @ 75050.00
+17:38:37 - INFO - [FUTURES] Signal: buy BTC/USDT confidence=52.99% -> OPEN LONG
+17:38:37 - INFO - [FUTURES] Order: buy 0.001332 BTC/USDT @ 75048.90 | margin=10.00 USDT, 10x | SL=74966.35, TP=75274.05
+17:38:37 - INFO - [PAPER] BUY LONG 0.001332464566436017050216592115 BTC/USDT @ 75048.90 (margin: 10.00 USDT, 10x)
+17:38:37 - INFO - [PAPER] Order executed: buy 0.001332 BTC/USDT @ 75048.90
+17:39:37 - INFO - [FUTURES] Signal: buy BTC/USDT confidence=53.91% -> OPEN LONG
+17:39:37 - INFO - [FUTURES] Order: buy 0.001333 BTC/USDT @ 75043.10 | margin=10.00 USDT, 10x | SL=74960.55, TP=75268.23
+17:39:37 - INFO - [PAPER] BUY LONG 0.001332548019877373050122417281 BTC/USDT @ 75043.10 (margin: 10.00 USDT, 10x)
+17:39:37 - INFO - [PAPER] Order executed: buy 0.001333 BTC/USDT @ 75043.10

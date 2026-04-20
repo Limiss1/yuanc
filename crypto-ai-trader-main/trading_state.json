@@ -1,0 +1,12 @@
+{
+  "confidence_threshold": 0.6,
+  "win_count": 1,
+  "loss_count": 0,
+  "total_closed": 1,
+  "trade_count": 1,
+  "has_open_position": {},
+  "sl_tp_map": {},
+  "tp_order_ids": {},
+  "sl_order_ids": {},
+  "saved_at": "2026-04-20T14:32:30.754352"
+}

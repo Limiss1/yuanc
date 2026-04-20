@@ -1,0 +1,7 @@
+Total open orders count: 1
+  id=13050653868 type=limit side=buy amount=0.066 price=75457.0 metadata={'stopPrice': '0', 'reduceOnly': True}
+Position: BTC/USDT:USDT side=sell amount=0.066 entry=75684.79212121 pnl=4.915435
+
+=== Now cancelling all orders (regular + algo) ===
+cancel_all_orders result: True
+After cancel - Total open orders count: 0

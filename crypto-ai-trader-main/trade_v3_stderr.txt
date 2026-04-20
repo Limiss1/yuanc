@@ -1,0 +1,4 @@
+Usage: python -m crypto_trader.cli.main trade [OPTIONS]
+Try 'python -m crypto_trader.cli.main trade --help' for help.
+
+Error: No such option: -v

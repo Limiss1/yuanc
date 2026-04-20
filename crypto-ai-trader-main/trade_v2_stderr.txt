@@ -1,0 +1,19 @@
+17:42:44 - INFO - Enabled testnet mode for binance
+17:42:44 - INFO - PaperExchange (USDT Futures) initialized: balance={'USDT': Decimal('100.0')}, leverage=10x
+17:42:44 - INFO - No pre-trained model found, will train on first run
+17:42:44 - INFO - Risk manager initialized with max drawdown: 0.15
+17:42:44 - INFO - TradingEngine initialized: mode=PAPER, symbols=['BTC/USDT']
+17:42:44 - INFO - Trading engine started
+17:42:44 - INFO - Initial capital: 100.00
+17:42:44 - INFO - Balance initialized: {'USDT': Decimal('100.0')}
+C:\Users\ll552\Desktop\8ÏîÐÞ¸´\crypto-ai-trader-main\.venv\Lib\site-packages\xgboost\training.py:200: UserWarning: [17:42:47] WARNING: C:\actions-runner\_work\xgboost\xgboost\src\learner.cc:782: 
+Parameters: { "use_label_encoder" } are not used.
+
+  bst.update(dtrain, iteration=i, fobj=obj)
+17:42:47 - INFO - Model saved to models\ai_trading_model.pkl
+17:42:47 - INFO - Model trained: accuracy=61.90%, samples=335
+17:42:47 - INFO - Model trained successfully: accuracy=61.90%, samples=335
+17:42:47 - INFO - [FUTURES] Signal: sell BTC/USDT confidence=73.58% -> OPEN SHORT
+17:42:47 - INFO - [FUTURES] Order: sell 0.001333 BTC/USDT @ 75034.30 | margin=10.00 USDT, 10x | SL=75116.84, TP=74809.20
+17:42:47 - INFO - [PAPER] SELL SHORT 0.001332723834299780233839723966 BTC/USDT @ 75034.30 (margin: 10.00 USDT, 10x)
+17:42:47 - INFO - [PAPER] Order executed: sell 0.001333 BTC/USDT @ 75034.30

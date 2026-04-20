@@ -1,0 +1,9 @@
+Confidence threshold: 0.45
+Signal type: buy
+Signal type enum: SignalType.BUY
+Confidence: 0.8172
+Price: 75619.60
+Metadata: {'prediction': 1, 'feature_count': 21, 'model_accuracy': 0.6428571428571429}
+Is BUY: True
+Is SELL: False
+Is HOLD: False

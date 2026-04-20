@@ -1,0 +1,28 @@
+--- Test: binanceusdm FULL test ---
+1. load_markets...
+  Markets loaded: 704
+
+2. fetch_balance...
+  USDT Free: 4423.30466932, Total: 4970.19978932
+  SUCCESS!
+
+3. fetch_ticker BTC/USDT:USDT...
+  Price: 75656.3
+  SUCCESS!
+
+4. fetch_ohlcv BTC/USDT:USDT 1m...
+  2026-04-19 21:14: O=75618.9 H=75636.2 L=75618.8 C=75618.9 V=5041.0188
+  2026-04-19 21:15: O=75636.1 H=75673.7 L=75618.7 C=75673.7 V=8121.2772
+  2026-04-19 21:16: O=75673.7 H=75673.7 L=75653.8 C=75656.3 V=0.7633
+  SUCCESS!
+
+5. set_leverage 10x BTC/USDT:USDT...
+  Leverage: {'symbol': 'BTCUSDT', 'leverage': '10', 'maxNotionalValue': '40000000'}
+  SUCCESS!
+
+6. fetch_positions...
+  BTC/USDT:USDT: side=long, contracts=0.0716, entryPrice=75656.3
+  SUCCESS!
+
+
+=== ALL TESTS PASSED! ===

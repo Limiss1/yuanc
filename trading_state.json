@@ -1,0 +1,24 @@
+{
+  "confidence_threshold": 0.6,
+  "win_count": 0,
+  "loss_count": 0,
+  "total_closed": 0,
+  "trade_count": 3,
+  "has_open_position": {
+    "ETH/USDT:USDT": true
+  },
+  "sl_tp_map": {
+    "ETH/USDT:USDT": {
+      "stop_loss": 2268.502135,
+      "take_profit": 2278.72573,
+      "position_side": "long"
+    }
+  },
+  "tp_order_ids": {
+    "ETH/USDT:USDT": "8389766160338941422"
+  },
+  "sl_order_ids": {
+    "ETH/USDT:USDT": "4000001127483527"
+  },
+  "saved_at": "2026-04-20T14:32:33.851850"
+}

@@ -1,0 +1,48 @@
+﻿.\.venv\Scripts\python.exe : 2026-04-19 20:39:03,391 - INFO - Using demo API f
+or data feed: https://testnet.binancefuture.com
+所在位置 行:1 字符: 57
++ ... -ai-trader-main"; .\.venv\Scripts\python.exe test_run.py 2>&1 | Out-F ..
+.
++                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-04-19 20:3...nancefuture.co 
+   m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-04-19 20:39:03,399 - INFO - PaperExchange: Using demo API: https://testne
+t.binancefuture.com
+2026-04-19 20:39:03,399 - INFO - PaperExchange: Binance API client initialized
+ for balance queries
+2026-04-19 20:39:03,399 - INFO - PaperExchange (USDT Futures) initialized: bal
+ance={'USDT': Decimal('10000.0')}, leverage=10x
+2026-04-19 20:39:03,500 - INFO - Model loaded from C:\Users\ll552\.crypto_trad
+er\cache\models\ai_trading_model.pkl
+2026-04-19 20:39:03,500 - INFO - Risk manager initialized with max drawdown: 0
+.15
+2026-04-19 20:39:03,500 - INFO - TradingEngine initialized: mode=PAPER, symbol
+s=['BTC/USDT:USDT']
+2026-04-19 20:39:10,131 - INFO - [BINANCE API] Initial USDT balance: 5000.00
+2026-04-19 20:39:10,131 - INFO - Initial capital: 5000.00
+2026-04-19 20:39:10,131 - INFO - Initial capital: 5000.00
+2026-04-19 20:39:10,131 - INFO - Balance initialized: {'USDT': Decimal('5000.0
+')}
+2026-04-19 20:39:15,491 - INFO - [BALANCE] Available: 5000.00 USDT
+2026-04-19 20:39:15,491 - INFO - [FUTURES] Signal: sell BTC/USDT:USDT confiden
+ce=54.55% -> OPEN SHORT
+2026-04-19 20:39:15,491 - INFO - [POSITION] Portfolio: 5000.00 USDT | Margin: 
+500.00 USDT (10%) | Notional: 5000.00 USDT (10x) | Size: 0.06626387
+2026-04-19 20:39:15,491 - INFO - [FUTURES] Order: sell 0.066264 BTC/USDT:USDT 
+@ 75455.90 | margin=500.00 USDT, 10x | SL=75538.90, TP=75229.53
+2026-04-19 20:39:15,491 - INFO - [PAPER] SELL SHORT 0.066263870684731081333600
+15585 BTC/USDT:USDT @ 75455.90 (margin: 500.00 USDT, 10x)
+2026-04-19 20:39:15,491 - INFO - [PAPER] Order executed: sell 0.066264 BTC/USD
+T:USDT @ 75455.90
+2026-04-19 20:39:15,492 - INFO - [BALANCE] After trade: 4500.00 USDT
+Initializing balance...
+Balance: {'USDT': Decimal('5000.0')}
+Running 1 cycle...
+Refreshing prices...
+Equity: 4500.00
+Unrealized PnL: 0.0000
+Positions: 1
+  BTC/USDT:USDT: short entry=75455.90 current=75455.90 pnl=0.0000
+Done!

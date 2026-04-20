@@ -1,0 +1,12 @@
+
+==================================================
+  Trading Engine Started (USDT Futures)
+  Mode: PAPER
+  Strategy: AIStrategy
+  Symbols: BTC/USDT
+  Leverage: 10x
+  Initial Balance: 100.0 USDT
+==================================================
+
+[17:38:33] Trades: 1 | Equity: 90.00 | PnL: +0.00 (+0.00%) | Positions: 1
+[17:39:33] Trades: 2 | Equity: 80.00 | PnL: -0.00 (-0.00%) | Positions: 1

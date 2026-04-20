@@ -1,0 +1,36 @@
+--- Test: Real order on testnet with positionSide ---
+1. load_markets...
+  Markets: 704
+
+2. fetch_balance...
+  USDT Free: 5000.0
+
+3. set_leverage 10x...
+  Leverage: {'symbol': 'BTCUSDT', 'leverage': '10', 'maxNotionalValue': '40000000'}
+
+4. Try switching to ONE-WAY mode...
+  Result: {'code': '200', 'msg': 'success'}
+
+5. fetch_ticker...
+  BTC/USDT price: 75436.9
+
+6. create_order SELL 0.001 BTC (short)...
+  Order ID: 13050097014
+  Status: closed
+  Price: 75436.9
+  Filled: 0.001
+  SUCCESS!
+
+7. fetch_positions...
+  BTC/USDT:USDT: side=short, contracts=0.001, entryPrice=75436.9, unrealizedPnl=0.01024666
+  SUCCESS!
+
+8. close position (buy 0.001)...
+  Order ID: 13050097075
+  Status: closed
+  SUCCESS!
+
+9. fetch_balance after close...
+  USDT Free: 4999.93935036
+
+=== ALL TESTS DONE! ===

@@ -1,0 +1,20 @@
+==================================================
+Testing proxy + Binance API
+==================================================
+
+[1/3] Testing proxy IP...
+Current exit IP: 2603:c022:8003:d500:6954:870d:45ee:330f
+
+[2/3] Testing Binance public API...
+Binance API status: 200
+Binance API OK!
+
+[3/3] Testing Binance Demo API...
+Demo API status: 200
+Demo API OK!
+
+[4] Testing Binance Futures API...
+Futures API status: 200
+Futures API OK!
+
+==================================================

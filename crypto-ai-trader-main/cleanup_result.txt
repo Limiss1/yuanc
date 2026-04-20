@@ -1,0 +1,10 @@
+=== Step 1: Cancel all orders ===
+cancel_all_orders: True
+
+=== Step 2: Close all positions ===
+
+=== Step 3: Final cancel all orders ===
+Final cancel_all_orders: True
+
+=== Step 4: Verify ===
+Open orders: 0

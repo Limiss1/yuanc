@@ -1,0 +1,51 @@
+============================================================
+  USDT Futures Trading Test (1m K-line)
+  Balance: 100 USDT | Margin: 10% | Leverage: 10x
+  Take Profit: 0.3% price move = 3% margin profit
+============================================================
+
+[Step 1] Fetching 1m K-line data...
+  Current BTC/USDT price: 74960.0
+  K-line data rows: 471
+
+[Step 2] Generating AI signal...
+  Signal: sell
+  Confidence: 69.76%
+  Price: 74960.00
+
+[Step 3] Position Details:
+  Side: SHORT
+  Entry Price: 74960.00
+  Position Size: 0.00000000 BTC
+  Notional Value: 0.00 USDT
+  Margin: 0.00 USDT (0% of balance)
+  Leverage: 10x
+  Stop Loss: 75042.46
+  Take Profit: 74735.12
+  TP Profit: 0.0000 USDT (0.0% of margin)
+
+[Step 4] Executing order...
+  Order executed: sell 0.00000000 BTC @ 74960.00
+  Available Balance: 100.00 USDT
+
+[Step 5] Checking position metadata...
+  Position SL (metadata): 75042.456
+  Position TP (metadata): 74735.12
+  Position Leverage (metadata): 10
+
+[Step 6] Simulating TP hit...
+
+[Step 7] Final Results:
+  Equity: 100.00 USDT
+  Available Balance: 100.00 USDT
+  Realized PnL: 0.0000 USDT
+  Total PnL: 0.0000 USDT (0.00%)
+
+  Expected profit (3% of margin 0.00): 0.0000 USDT
+  Actual realized PnL: 0.0000 USDT
+  Difference: 0.0000 USDT
+  Match: YES
+
+============================================================
+  TEST COMPLETED SUCCESSFULLY!
+============================================================

@@ -1,0 +1,30 @@
+=== Real-time Prediction Test ===
+Feature engine columns (19): ['returns', 'log_returns', 'sma_5', 'ema_5', 'sma_10', 'ema_10', 'sma_20', 'ema_20', 'sma_50', 'ema_50', 'volatility_20', 'volatility_50', 'volume_sma_20', 'volume_ratio', 'volume_change', 'range', 'normalized_range', 'momentum_10', 'momentum_20']
+Model feature columns (19): ['returns', 'log_returns', 'sma_5', 'ema_5', 'sma_10', 'ema_10', 'sma_20', 'ema_20', 'sma_50', 'ema_50', 'volatility_20', 'volatility_50', 'volume_sma_20', 'volume_ratio', 'volume_change', 'range', 'normalized_range', 'momentum_10', 'momentum_20']
+Feature count match: True
+
+--- BTC/USDT:USDT ---
+  Data points: 500
+  Latest price: 74394.20
+  Feature rows after dropna: 450
+  Feature vector length: 19
+  Prediction: 0 (SELL)
+  Confidence: 0.5803 (58.03%)
+  Threshold: 60%
+  Would trade: False
+
+--- ETH/USDT:USDT ---
+  Data points: 500
+  Latest price: 2275.40
+  Feature rows after dropna: 450
+  Feature vector length: 19
+  Prediction: 1 (BUY)
+  Confidence: 0.8050 (80.50%)
+  Threshold: 60%
+  Would trade: True
+
+=== Model Accuracy ===
+  Training #1: accuracy=55.56%
+  Current accuracy: 55.56%
+  Win rate threshold for retrain: 80%
+  [INFO] Accuracy below 80%, model will auto-retrain after more trades

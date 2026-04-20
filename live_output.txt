@@ -1,0 +1,50 @@
+﻿2026-04-20 13:19:32,377 - INFO - Killed old process PID 1800
+2026-04-20 13:19:34,417 - WARNING - ============================================================
+2026-04-20 13:19:34,417 - WARNING -   *** LIVE TRADING MODE - REAL MONEY AT RISK ***
+2026-04-20 13:19:34,417 - WARNING - ============================================================
+2026-04-20 13:19:34,417 - INFO - ============================================================
+2026-04-20 13:19:34,417 - INFO -   Trading System Starting - LIVE (Real Money)
+2026-04-20 13:19:34,417 - INFO -   PID: 7408
+2026-04-20 13:19:34,417 - INFO -   Time: 2026-04-20 13:19:34
+2026-04-20 13:19:34,417 - INFO -   Market Mode: live
+2026-04-20 13:19:34,417 - INFO -   Testnet: False
+2026-04-20 13:19:34,417 - INFO -   API Key: bwvtEMWL...
+2026-04-20 13:19:34,417 - INFO - ============================================================
+2026-04-20 13:19:34,431 - INFO - Live mode for binance
+2026-04-20 13:19:34,570 - INFO - Model loaded from models\ai_trading_model.pkl
+2026-04-20 13:19:34,570 - INFO - Loaded model with 36 features, accuracy history: [0.7222222222222222]
+2026-04-20 13:19:34,571 - INFO - Risk manager initialized with max drawdown: 0.15
+2026-04-20 13:19:34,572 - INFO - State restored: threshold=60%, trades=0, positions=[]
+2026-04-20 13:19:34,572 - INFO - TradingEngine initialized: mode=LIVE, symbols=['BTC/USDT:USDT', 'ETH/USDT:USDT']
+2026-04-20 13:19:34,572 - INFO - Mode: LIVE (Real Money)
+2026-04-20 13:19:34,572 - INFO - Symbols: ['BTC/USDT:USDT', 'ETH/USDT:USDT']
+2026-04-20 13:19:34,572 - INFO - Leverage: 10x
+2026-04-20 13:19:34,572 - INFO - Confidence threshold: 60%
+2026-04-20 13:19:34,572 - INFO - Win rate threshold for retrain: 80%
+2026-04-20 13:19:34,573 - INFO - Trading engine started
+2026-04-20 13:19:43,186 - INFO - Initial capital: 30.00
+2026-04-20 13:19:43,186 - INFO - Balance initialized: {'USDT': Decimal('30.0')}
+2026-04-20 13:19:43,186 - INFO - === Startup cleanup: closing all positions and cancelling all orders ===
+2026-04-20 13:19:43,630 - INFO - Cancelled all regular open orders for BTC/USDT:USDT
+2026-04-20 13:19:44,070 - INFO - Cancelled all algo/conditional open orders for BTC/USDT:USDT
+2026-04-20 13:19:44,071 - INFO - [CLEANUP] Cancelled all orders for BTC/USDT:USDT
+2026-04-20 13:19:47,456 - INFO - Cancelled all regular open orders for BTC/USDT:USDT
+2026-04-20 13:19:47,892 - INFO - Cancelled all algo/conditional open orders for BTC/USDT:USDT
+2026-04-20 13:19:47,893 - INFO - [CLEANUP] Final cancel all orders for BTC/USDT:USDT
+2026-04-20 13:19:48,330 - INFO - Cancelled all regular open orders for ETH/USDT:USDT
+2026-04-20 13:19:48,767 - INFO - Cancelled all algo/conditional open orders for ETH/USDT:USDT
+2026-04-20 13:19:48,767 - INFO - [CLEANUP] Cancelled all orders for ETH/USDT:USDT
+2026-04-20 13:19:51,659 - INFO - Cancelled all regular open orders for ETH/USDT:USDT
+2026-04-20 13:19:52,101 - INFO - Cancelled all algo/conditional open orders for ETH/USDT:USDT
+2026-04-20 13:19:52,101 - INFO - [CLEANUP] Final cancel all orders for ETH/USDT:USDT
+2026-04-20 13:19:52,102 - INFO - === Startup cleanup complete, starting fresh ===
+2026-04-20 13:19:52,543 - INFO - Initial USDT Balance: 30.00
+2026-04-20 13:19:52,543 - INFO - [Cycle 1] Starting trading cycle...
+2026-04-20 13:20:02,706 - INFO - Signal skipped: confidence 57.20% < threshold 60% for ETH/USDT:USDT
+2026-04-20 13:20:03,582 - INFO - [Cycle 1] Balance: 30.00 USDT | Trades: 0 | Positions: 0 | WinRate: 0.0% | Confidence: 60%
+2026-04-20 13:20:03,589 - INFO - [Cycle 1] Completed, sleeping 60s...
+2026-04-20 13:21:03,971 - INFO - [Cycle 2] Starting trading cycle...
+2026-04-20 13:21:05,093 - INFO - Signal skipped: confidence 49.36% < threshold 60% for BTC/USDT:USDT
+2026-04-20 13:21:05,093 - INFO - Signal skipped: confidence 55.86% < threshold 60% for ETH/USDT:USDT
+2026-04-20 13:21:05,970 - INFO - [Cycle 2] Balance: 30.00 USDT | Trades: 0 | Positions: 0 | WinRate: 0.0% | Confidence: 60%
+2026-04-20 13:21:05,979 - INFO - [Cycle 2] Completed, sleeping 60s...
