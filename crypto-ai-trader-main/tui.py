@@ -1,52 +1,48 @@
 """
 Crypto AI Trader TUI - Hummingbot-Style Terminal Interface
-Uses prompt_toolkit to replicate Hummingbot's exact UI layout and interaction.
+Uses crypto_trader.ui package (adapted from Hummingbot) for UI components.
 """
 
 import sys
 import os
 import asyncio
-import json
 import hashlib
-import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable, Deque
-from collections import deque
-from decimal import Decimal
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from prompt_toolkit import Application
-from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.clipboard.pyperclip import PyperclipClipboard
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.document import Document
-from prompt_toolkit.filters import Condition, has_focus, is_done, is_true, to_filter
-from prompt_toolkit.formatted_text import StyleAndTextTuples
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.layout import Dimension, Layout
-from prompt_toolkit.layout.containers import (
-    ConditionalContainer, Float, FloatContainer,
-    HSplit, VSplit, Window, WindowAlign,
-)
-from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
-from prompt_toolkit.layout.layout import Layout
-from prompt_toolkit.layout.menus import CompletionsMenu
-from prompt_toolkit.layout.processors import (
-    AppendAutoSuggestion, BeforeInput, ConditionalProcessor, PasswordProcessor,
-)
-from prompt_toolkit.layout.margins import ScrollbarMargin
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-from prompt_toolkit.lexers import Lexer
-from prompt_toolkit.styles import Style
-from prompt_toolkit.widgets import Box, Button, SearchToolbar, Dialog, Label as PtLabel, TextArea as PtTextArea
 from prompt_toolkit.history import InMemoryHistory
 
-import psutil
+from crypto_trader.ui import (
+    CustomTextArea,
+    create_input_field,
+    create_output_field,
+    create_timer,
+    create_process_monitor,
+    create_trade_monitor,
+    create_search_field,
+    create_log_field,
+    create_live_field,
+    create_log_toggle,
+    create_tab_button,
+    generate_layout,
+    load_style,
+    load_key_bindings,
+    start_timer,
+    start_process_monitor,
+    start_trade_monitor,
+)
+from crypto_trader.ui.tab import CommandTab
 
 APP_PASSWORD_HASH = hashlib.sha256("crypto2024".encode()).hexdigest()
 PASSWORD_FILE = PROJECT_ROOT / ".gui_auth"
@@ -63,244 +59,9 @@ def load_password_hash() -> str:
     return APP_PASSWORD_HASH
 
 
-HEADER = r"""
-                                                    *,.
-                                                    *,,,*
-                                                ,,,,,,,               *
-                                                ,,,,,,,,           ,,,,
-                                                *,,,,,,,,(        .,,,,,,
-                                            /,,,,,,,,,,     .*,,,,,,,,
-                                            .,,,,,,,,,,,.  ,,,,,,,,,,,*
-                                            ,,,,,,,,,,,,,,,,,,,,,,,,,,,
-                                //      ,,,,,,,,,,,,,,,,,,,,,,,,,,,,#*%
-                            .,,,,,,,,. *,,,,,,,,,,,,,,,,,,,,,,,,,,,%%%%%%&@
-                            ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,%%%%%%%&
-                        ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,%%%%%%%&
-                        /*,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,(((((%%&
-                    **.         #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,((((((((((#.
-                **               *,,,,,,,,,,,,,,,,,,,,,,,,**/(((((((((((((*
-                                    ,,,,,,,,,,,,,,,,,,,,*********((((((((((((
-                                    ,,,,,,,,,,,,,,,**************((((((((@
-                                    (,,,,,,,,,,,,,,,***************(#
-                                        *,,,,,,,,,,,,,,,,**************/
-                                        ,,,,,,,,,,,,,,,***************/
-                                            ,,,,,,,,,,,,,,****************
-                                            .,,,,,,,,,,,,**************/
-                                                ,,,,,,,,*******,
-                                                *,,,,,,,,********
-                                                ,,,,,,,,,/******/
-                                                ,,,,,,,,,@  /****/
-                                                ,,,,,,,,
-                                                , */
-
-  ██████╗██████╗ ██╗   ██╗██████╗ ████████╗ ██████╗ ██╗   ██╗███████╗██████╗
- ██╔════╝██╔══██╗╚██╗ ██╔╝██╔══██╗╚══██╔══╝██╔═══██╗██║   ██║██╔════╝██╔══██╗
- ██║     ██████╔╝ ╚████╔╝ ██████╔╝   ██║   ██║   ██║██║   ██║█████╗  ██████╔╝
- ██║     ██╔══██╗  ╚██╔╝  ██╔═══╝    ██║   ██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
- ╚██████╗██║  ██║   ██║   ██║        ██║   ╚██████╔╝ ╚████╔╝ ███████╗██║  ██║
-  ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚═╝        ╚═╝    ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝
-
-======================================================================================
-Crypto AI Trader - USDT Perpetual Futures AI-Powered Trading System
-
-- AI Strategy: XGBoost 3-class prediction (BUY/HOLD/SELL)
-- Exchange: Binance USDT-M Futures
-- Risk: Auto stop-loss / take-profit with adaptive confidence
-
-Useful Commands:
-- setup       Interactive setup wizard (F2)
-- start       Start trading engine (F5)
-- stop        Stop trading engine (F6)
-- status      Show trading status (F9)
-- config      Show / modify configuration
-- balance     Show account balance
-- positions   Show open positions
-- orders      Show open orders
-- price       Show live prices
-- predict     Run AI prediction
-- retrain     Retrain AI model
-- cleanup     Cancel all orders & close positions
-- password    Change login password
-- help        List all commands
-- exit        Exit application
-
-"""
-
-UI_STYLE = {
-    "output_field":               "bg:#171E2B #1CD085",
-    "input_field":                "bg:#000000 #FFFFFF",
-    "log_field":                  "bg:#171E2B #FFFFFF",
-    "header":                     "bg:#000000 #AAAAAA",
-    "footer":                     "bg:#000000 #AAAAAA",
-    "search":                     "bg:#000000 #93C36D",
-    "search.current":             "bg:#000000 #1CD085",
-    "primary":                    "#1CD085",
-    "warning":                    "#93C36D",
-    "error":                      "#F5634A",
-    "tab_button.focused":         "bg:#1CD085 #171E2B",
-    "tab_button":                 "bg:#FFFFFF #000000",
-    "dialog":                     "bg:#171E2B",
-    "dialog frame.label":         "bg:#FFFFFF #000000",
-    "dialog.body":                "bg:#000000 ",
-    "dialog shadow":              "bg:#171E2B",
-    "button":                     "bg:#FFFFFF #000000",
-    "text-area":                  "bg:#000000 #FFFFFF",
-    "primary_label":              "bg:#1CD085 #171E2B",
-    "secondary_label":            "bg:#5E6673 #171E2B",
-    "success_label":              "bg:#0ECB81 #171E2B",
-    "warning_label":              "bg:#FCD535 #171E2B",
-    "info_label":                 "bg:#1E80FF #171E2B",
-    "error_label":                "bg:#F6465D #171E2B",
-    "gold_label":                 "bg:#171E2B #FFD700",
-    "silver_label":               "bg:#171E2B #C0C0C0",
-    "bronze_label":               "bg:#171E2B #CD7F32",
-}
-
-
-class CustomBuffer(Buffer):
-    def validate_and_handle(self):
-        valid = self.validate(set_cursor=True)
-        if valid:
-            if self.accept_handler:
-                keep_text = self.accept_handler(self)
-            else:
-                keep_text = False
-            if not keep_text:
-                self.reset()
-
-
-class CustomTextArea:
-    def __init__(self, text='', multiline=True, password=False,
-                 lexer=None, auto_suggest=None, completer=None,
-                 complete_while_typing=True, accept_handler=None, history=None,
-                 focusable=True, focus_on_click=False, wrap_lines=True,
-                 read_only=False, width=None, height=None,
-                 dont_extend_height=False, dont_extend_width=False,
-                 line_numbers=False, get_line_prefix=None, scrollbar=False,
-                 style='', search_field=None, preview_search=True, prompt='',
-                 input_processors=None, max_line_count=1000, initial_text="",
-                 align=WindowAlign.LEFT):
-
-        if search_field is None:
-            search_control = None
-        elif isinstance(search_field, SearchToolbar):
-            search_control = search_field.control
-
-        if input_processors is None:
-            input_processors = []
-
-        self.completer = completer
-        self.complete_while_typing = complete_while_typing
-        self.lexer = lexer
-        self.auto_suggest = auto_suggest
-        self.read_only = read_only
-        self.wrap_lines = wrap_lines
-        self.max_line_count = max_line_count
-
-        self.buffer = CustomBuffer(
-            document=Document(text, 0),
-            multiline=multiline,
-            read_only=Condition(lambda: is_true(self.read_only)),
-            completer=completer,
-            complete_while_typing=Condition(lambda: is_true(self.complete_while_typing)),
-            auto_suggest=auto_suggest,
-            accept_handler=accept_handler,
-            history=history,
-        )
-
-        procs = [
-            ConditionalProcessor(
-                AppendAutoSuggestion(),
-                has_focus(self.buffer) & ~is_done),
-            ConditionalProcessor(
-                processor=PasswordProcessor(),
-                filter=to_filter(password)
-            ),
-            BeforeInput(prompt, style='class:text-area.prompt'),
-        ] + input_processors
-
-        self.control = BufferControl(
-            buffer=self.buffer,
-            lexer=lexer,
-            input_processors=procs,
-            search_buffer_control=search_control,
-            preview_search=preview_search,
-            focusable=focusable,
-            focus_on_click=focus_on_click,
-        )
-
-        if multiline:
-            right_margins = [ScrollbarMargin(display_arrows=True)] if scrollbar else []
-            left_margins = []
-        else:
-            left_margins = []
-            right_margins = []
-
-        style = 'class:text-area ' + style
-
-        self.window = Window(
-            height=height,
-            width=width,
-            dont_extend_height=dont_extend_height,
-            dont_extend_width=dont_extend_width,
-            content=self.control,
-            style=style,
-            wrap_lines=Condition(lambda: is_true(self.wrap_lines)),
-            left_margins=left_margins,
-            right_margins=right_margins,
-            get_line_prefix=get_line_prefix,
-            align=align,
-        )
-
-        self.log_lines: Deque[str] = deque()
-        self.log(initial_text)
-
-    @property
-    def text(self):
-        return self.buffer.text
-
-    @text.setter
-    def text(self, value):
-        self.buffer.set_document(Document(value, 0), bypass_readonly=True)
-
-    @property
-    def document(self):
-        return self.buffer.document
-
-    @document.setter
-    def document(self, value):
-        self.buffer.document = value
-
-    def __pt_container__(self):
-        return self.window
-
-    def log(self, text: str, save_log: bool = True, silent: bool = False):
-        if self.window.render_info is None:
-            max_width = 120
-        else:
-            max_width = self.window.render_info.window_width - 2
-
-        repls = (('<b>', ''), ('</b>', ''), ('<pre>', ''), ('</pre>', ''))
-        for r in repls:
-            text = text.replace(*r)
-
-        new_lines_raw: List[str] = str(text).split('\n')
-        new_lines = []
-        for line in new_lines_raw:
-            while len(line) > max_width:
-                new_lines.append(line[0:max_width])
-                line = line[max_width:]
-            new_lines.append(line)
-
-        if save_log:
-            self.log_lines.extend(new_lines)
-            while len(self.log_lines) > self.max_line_count:
-                self.log_lines.popleft()
-            new_text: str = "\n".join(self.log_lines)
-        else:
-            new_text: str = "\n".join(new_lines)
-        if not silent:
-            self.buffer.document = Document(text=new_text, cursor_position=len(new_text))
+def save_password(pw: str):
+    with open(PASSWORD_FILE, "w") as f:
+        f.write(hash_password(pw))
 
 
 class CommandCompleter(Completer):
@@ -333,8 +94,6 @@ class CommandCompleter(Completer):
                 for arg in self.COMMAND_ARGS[parts[0]]:
                     if arg.startswith(parts[1]):
                         yield Completion(arg, start_position=-len(parts[1]))
-            elif len(parts) == 2 and text.endswith(' '):
-                pass
 
 
 class CryptoTraderApp:
@@ -376,6 +135,16 @@ class CryptoTraderApp:
         self._start_time = time.time()
         self._pending_prompt = None
         self._prompt_event = None
+
+        self.command_tabs: Dict[str, CommandTab] = {
+            "price": CommandTab(name="price", tab_index=1),
+            "positions": CommandTab(name="positions", tab_index=2),
+            "ai": CommandTab(name="ai", tab_index=3),
+        }
+
+        self.app: Optional[Application] = None
+        self.layout = None
+        self.layout_components = None
 
     def _load_env_config(self):
         try:
@@ -419,93 +188,12 @@ class CryptoTraderApp:
         except Exception:
             pass
 
-    def _create_input_field(self):
-        return CustomTextArea(
-            height=10,
-            prompt='>>> ',
-            style='class:input_field',
-            multiline=False,
-            focus_on_click=True,
-            auto_suggest=AutoSuggestFromHistory(),
-            completer=CommandCompleter(),
-            complete_while_typing=True,
-            history=InMemoryHistory(),
-        )
-
-    def _create_output_field(self):
-        return CustomTextArea(
-            style='class:output_field',
-            focus_on_click=False,
-            read_only=False,
-            scrollbar=True,
-            max_line_count=5000,
-            initial_text=HEADER,
-        )
-
-    def _create_log_field(self, search_field):
-        return CustomTextArea(
-            style='class:log_field',
-            text="Running Logs\n",
-            focus_on_click=False,
-            read_only=False,
-            scrollbar=True,
-            max_line_count=5000,
-            initial_text="Running Logs \n",
-            search_field=search_field,
-            preview_search=False,
-        )
-
-    def _create_timer(self):
-        return CustomTextArea(
-            style='class:footer',
-            focus_on_click=False,
-            read_only=False,
-            scrollbar=False,
-            max_line_count=1,
-            width=30,
-        )
-
-    def _create_process_monitor(self):
-        return CustomTextArea(
-            style='class:footer',
-            focus_on_click=False,
-            read_only=False,
-            scrollbar=False,
-            max_line_count=1,
-            align=WindowAlign.RIGHT,
-        )
-
-    def _create_trade_monitor(self):
-        return CustomTextArea(
-            style='class:footer',
-            focus_on_click=False,
-            read_only=False,
-            scrollbar=False,
-            max_line_count=1,
-        )
-
-    def _create_search_field(self):
-        return SearchToolbar(
-            text_if_not_searching=[('class:primary', "[CTRL + F] to start searching.")],
-            forward_search_prompt=[('class:primary', "Search logs [Press CTRL + F to hide search] >>> ")],
-            ignore_case=True,
-        )
-
-    def _create_live_field(self):
-        return CustomTextArea(
-            style='class:log_field',
-            focus_on_click=False,
-            read_only=False,
-            scrollbar=True,
-            max_line_count=5000,
-        )
-
     def _get_version(self):
         return [("class:header", "Crypto AI Trader v1.0")]
 
     def _get_strategy(self):
         if self._engine_running:
-            return [("class:log_field", f"Strategy: AI (XGBoost)")]
+            return [("class:log_field", "Strategy: AI (XGBoost)")]
         return [("class:log_field", "Strategy: --")]
 
     def _get_mode(self):
@@ -520,246 +208,112 @@ class CryptoTraderApp:
             return [("class:log_field", "Status: \U0001f7e2 RUNNING")]
         return [("class:log_field", "Status: \U0001f534 STOPPED")]
 
-    def _generate_layout(self):
-        self.search_field = self._create_search_field()
-        self.input_field = self._create_input_field()
-        self.output_field = self._create_output_field()
-        self.log_field = self._create_log_field(self.search_field)
-        self.timer = self._create_timer()
-        self.process_monitor = self._create_process_monitor()
-        self.trade_monitor = self._create_trade_monitor()
-        self.right_pane_toggle = Button(
-            text='> Ctrl+T',
-            width=10,
-            handler=self._toggle_right_pane,
-            left_symbol='',
-            right_symbol='',
+    def _init_ui_components(self):
+        self.search_field = create_search_field()
+        self.input_field = create_input_field(completer=CommandCompleter())
+        self.output_field = create_output_field()
+        self.log_field = create_log_field(self.search_field)
+        self.right_pane_toggle = create_log_toggle(self._toggle_right_pane)
+        self.log_field_button = create_tab_button("logs", self._log_button_clicked)
+        self.timer = create_timer()
+        self.process_monitor = create_process_monitor()
+        self.trade_monitor = create_trade_monitor()
+        self.price_field = create_live_field()
+        self.positions_field = create_live_field()
+        self.ai_field = create_live_field()
+
+        self.command_tabs["price"].button = create_tab_button("price", lambda: self._tab_button_clicked("price"))
+        self.command_tabs["price"].close_button = create_tab_button("x", lambda: self._close_button_clicked("price"), 1, '', ' ')
+        self.command_tabs["price"].output_field = self.price_field
+
+        self.command_tabs["positions"].button = create_tab_button("positions", lambda: self._tab_button_clicked("positions"))
+        self.command_tabs["positions"].close_button = create_tab_button("x", lambda: self._close_button_clicked("positions"), 1, '', ' ')
+        self.command_tabs["positions"].output_field = self.positions_field
+
+        self.command_tabs["ai"].button = create_tab_button("ai", lambda: self._tab_button_clicked("ai"))
+        self.command_tabs["ai"].close_button = create_tab_button("x", lambda: self._close_button_clicked("ai"), 1, '', ' ')
+        self.command_tabs["ai"].output_field = self.ai_field
+
+    def _redraw_app(self):
+        self.layout, self.layout_components = generate_layout(
+            input_field=self.input_field,
+            output_field=self.output_field,
+            log_field=self.log_field,
+            right_pane_toggle=self.right_pane_toggle,
+            log_field_button=self.log_field_button,
+            search_field=self.search_field,
+            timer=self.timer,
+            process_monitor=self.process_monitor,
+            trade_monitor=self.trade_monitor,
+            command_tabs=self.command_tabs,
+            get_version=self._get_version,
+            get_strategy=self._get_strategy,
+            get_mode=self._get_mode,
+            get_status=self._get_status,
         )
-
-        self.tab_logs_btn = Button(
-            text=' logs ',
-            width=8,
-            handler=lambda: self._switch_tab("logs"),
-            left_symbol=' ',
-            right_symbol=' ',
-        )
-        self.tab_logs_btn.window.style = "class:tab_button.focused"
-
-        self.tab_price_btn = Button(
-            text=' price ',
-            width=9,
-            handler=lambda: self._switch_tab("price"),
-            left_symbol=' ',
-            right_symbol=' ',
-        )
-        self.tab_price_btn.window.style = "class:tab_button"
-
-        self.tab_positions_btn = Button(
-            text=' positions ',
-            width=12,
-            handler=lambda: self._switch_tab("positions"),
-            left_symbol=' ',
-            right_symbol=' ',
-        )
-        self.tab_positions_btn.window.style = "class:tab_button"
-
-        self.tab_ai_btn = Button(
-            text=' ai ',
-            width=6,
-            handler=lambda: self._switch_tab("ai"),
-            left_symbol=' ',
-            right_symbol=' ',
-        )
-        self.tab_ai_btn.window.style = "class:tab_button"
-
-        self.price_field = self._create_live_field()
-        self.positions_field = self._create_live_field()
-        self.ai_field = self._create_live_field()
-
-        item_top_version = Window(FormattedTextControl(self._get_version), style="class:header")
-        item_top_strategy = Window(FormattedTextControl(self._get_strategy), style="class:header")
-        item_top_mode = Window(FormattedTextControl(self._get_mode), style="class:header")
-        item_top_status = Window(FormattedTextControl(self._get_status), style="class:header")
-        item_top_toggle = self.right_pane_toggle
-
-        pane_top = VSplit([
-            item_top_version,
-            item_top_strategy,
-            item_top_mode,
-            item_top_status,
-            item_top_toggle,
-        ], height=1)
-
-        pane_bottom = VSplit([
-            self.trade_monitor,
-            self.process_monitor,
-            self.timer,
-        ], height=1)
-
-        output_pane = Box(body=self.output_field, padding=0, padding_left=2, style="class:output_field")
-        input_pane = Box(body=self.input_field, padding=0, padding_left=2, padding_top=1, style="class:input_field")
-        pane_left = HSplit([output_pane, input_pane], width=Dimension(weight=1))
-
-        tab_buttons = [
-            self.tab_logs_btn,
-            self.tab_price_btn,
-            self.tab_positions_btn,
-            self.tab_ai_btn,
-        ]
-        pane_right_top = VSplit(
-            tab_buttons, height=1, style="class:log_field", padding_char=" ", padding=2
-        )
-
-        right_content = self._get_right_pane_content()
-
-        pane_right = ConditionalContainer(
-            Box(
-                body=HSplit([pane_right_top, right_content, self.search_field], width=Dimension(weight=1)),
-                padding=0, padding_left=2, style="class:log_field"
-            ),
-            filter=Condition(lambda: self._right_pane_visible)
-        )
-
-        hint_menus = [Float(
-            xcursor=True, ycursor=True, transparent=True,
-            content=CompletionsMenu(max_height=16, scroll_offset=1)
-        )]
-
-        root_container = HSplit([
-            pane_top,
-            VSplit([
-                FloatContainer(pane_left, hint_menus),
-                pane_right,
-            ]),
-            pane_bottom,
-        ])
-
-        return Layout(root_container, focused_element=self.input_field)
-
-    def _get_right_pane_content(self):
-        if self._current_tab == "logs":
-            return self.log_field
-        elif self._current_tab == "price":
-            return self.price_field
-        elif self._current_tab == "positions":
-            return self.positions_field
-        elif self._current_tab == "ai":
-            return self.ai_field
-        return self.log_field
-
-    def _switch_tab(self, tab_name):
-        self._current_tab = tab_name
-        for name, btn in [
-            ("logs", self.tab_logs_btn),
-            ("price", self.tab_price_btn),
-            ("positions", self.tab_positions_btn),
-            ("ai", self.tab_ai_btn),
-        ]:
-            if name == tab_name:
-                btn.window.style = "class:tab_button.focused"
-            else:
-                btn.window.style = "class:tab_button"
-
-        self._rebuild_layout()
+        if self.app is not None:
+            self.app.layout = self.layout
+            self.app.invalidate()
 
     def _toggle_right_pane(self):
-        self._right_pane_visible = not self._right_pane_visible
-        if self._right_pane_visible:
-            self.right_pane_toggle.text = '> Ctrl+T'
+        if self.layout_components["pane_right"].filter():
+            self.layout_components["pane_right"].filter = lambda: False
+            self.layout_components["item_top_toggle"].text = '< Ctrl+T'
         else:
-            self.right_pane_toggle.text = '< Ctrl+T'
+            self.layout_components["pane_right"].filter = lambda: True
+            self.layout_components["item_top_toggle"].text = '> Ctrl+T'
 
-    def _rebuild_layout(self):
-        self.layout = self._generate_layout()
-        self.app.layout = self.layout
-        self.app.invalidate()
+    def _log_button_clicked(self):
+        for tab in self.command_tabs.values():
+            tab.is_selected = False
+        self._current_tab = "logs"
+        self._redraw_app()
 
-    def _build_config(self):
-        from crypto_trader.infra.config import (
-            TradingConfig, ExchangeConfig, StrategyConfig,
-            RiskConfig, DataConfig, TradingMode, MarketMode, ExchangeType
-        )
+    def _tab_button_clicked(self, tab_name: str):
+        for tab in self.command_tabs.values():
+            tab.is_selected = False
+        self.command_tabs[tab_name].is_selected = True
+        self._current_tab = tab_name
+        self._redraw_app()
 
-        cv = self.config_values
-        trading_mode = TradingMode.PAPER_TRADING if cv["mode"] == "paper" else TradingMode.LIVE_TRADING
-        market_mode = MarketMode.TESTNET if cv["trading_mode"] == "testnet" else MarketMode.LIVE
+    def _close_button_clicked(self, tab_name: str):
+        self.command_tabs[tab_name].button = None
+        self.command_tabs[tab_name].close_button = None
+        self.command_tabs[tab_name].output_field = None
+        self.command_tabs[tab_name].is_selected = False
+        for tab in self.command_tabs.values():
+            if tab.tab_index > self.command_tabs[tab_name].tab_index:
+                tab.tab_index -= 1
+        self.command_tabs[tab_name].tab_index = 0
+        self._current_tab = "logs"
+        self._redraw_app()
 
-        config = TradingConfig(
-            mode=trading_mode,
-            trading_mode=market_mode,
-            symbols=[cv["symbol"]],
-            base_currency="USDT",
-            exchange=ExchangeConfig(
-                name=ExchangeType.BINANCE,
-                api_key=cv["api_key"] or None,
-                api_secret=cv["api_secret"] or None,
-                testnet=(market_mode == MarketMode.TESTNET),
-                leverage=cv["leverage"],
-            ),
-            strategy=StrategyConfig(
-                name="ai",
-                confidence_threshold=cv["confidence"],
-                max_position_size=0.1,
-                lookback_period=500,
-            ),
-            risk=RiskConfig(
-                max_drawdown=0.15,
-                daily_loss_limit=0.05,
-                max_open_positions=3,
-                stop_loss_pct=cv["stop_loss_pct"] / 100.0,
-                take_profit_pct=cv["take_profit_pct"] / 100.0,
-            ),
-            data=DataConfig(
-                update_interval=cv["interval"],
-            ),
-        )
-        config.apply_market_mode()
-        return config
-
-    def _init_components(self, config):
-        from crypto_trader.data.market_data import MarketData, CCXTDataFeed
-        from crypto_trader.execution.exchange import CCXTExchange
-        from crypto_trader.execution.paper_exchange import PaperExchange
-        from crypto_trader.strategy.ai_strategy import AIStrategy
-        from crypto_trader.risk.risk_manager import RiskManager
-        from crypto_trader.infra.config import set_config
-
-        set_config(config)
-
-        self.data_feed = CCXTDataFeed(
-            exchange_id=config.exchange.name.value,
-            api_key=config.exchange.api_key,
-            api_secret=config.exchange.api_secret,
-            testnet=config.exchange.testnet,
-            demo_api=config.exchange.demo_api,
-        )
-        self.market_data = MarketData(self.data_feed)
-
-        if config.mode.value == "paper":
-            self.exchange = PaperExchange(
-                default_leverage=config.exchange.leverage,
-                use_api_balance=True,
-            )
+    def _tab_navigate_left(self):
+        selected_tabs = [t for t in self.command_tabs.values() if t.is_selected]
+        if not selected_tabs:
+            return
+        selected_tab = selected_tabs[0]
+        if selected_tab.tab_index == 1:
+            self._log_button_clicked()
         else:
-            self.exchange = CCXTExchange(
-                exchange_id=config.exchange.name.value,
-                api_key=config.exchange.api_key,
-                api_secret=config.exchange.api_secret,
-                testnet=config.exchange.testnet,
-                leverage=config.exchange.leverage,
-                demo_api=config.exchange.demo_api,
-            )
+            left_tab = [t for t in self.command_tabs.values() if t.tab_index == selected_tab.tab_index - 1]
+            if left_tab:
+                self._tab_button_clicked(left_tab[0].name)
 
-        self.strategy = AIStrategy()
-        self.risk_manager = RiskManager()
-        self.config = config
-        return True
+    def _tab_navigate_right(self):
+        current_tabs = [t for t in self.command_tabs.values() if t.tab_index > 0]
+        if not current_tabs:
+            return
+        selected_tab = [t for t in current_tabs if t.is_selected]
+        if selected_tab:
+            right_tab = [t for t in current_tabs if t.tab_index == selected_tab[0].tab_index + 1]
+        else:
+            right_tab = [t for t in current_tabs if t.tab_index == 1]
+        if right_tab:
+            self._tab_button_clicked(right_tab[0].name)
 
     def _log(self, text: str, save_log: bool = True):
-        if self._engine_running:
-            self.output_field.log(text, save_log=save_log)
-        else:
-            self.output_field.log(text, save_log=save_log)
+        self.output_field.log(text, save_log=save_log)
 
     def _log_right(self, text: str):
         self.log_field.log(text)
@@ -773,61 +327,51 @@ class CryptoTraderApp:
         cmd = parts[0].lower()
         args = parts[1:] if len(parts) > 1 else []
 
-        if cmd == "help":
-            self._cmd_help()
-        elif cmd == "setup":
-            self._cmd_setup()
-        elif cmd == "start":
-            self._cmd_start(args)
-        elif cmd == "stop":
-            self._cmd_stop()
-        elif cmd == "status":
-            self._cmd_status()
-        elif cmd == "config":
-            self._cmd_config(args)
-        elif cmd == "balance":
-            self._cmd_balance()
-        elif cmd == "positions":
-            self._cmd_positions()
-        elif cmd == "orders":
-            self._cmd_orders()
-        elif cmd == "price":
-            self._cmd_price(args)
-        elif cmd == "predict":
-            self._cmd_predict()
-        elif cmd == "retrain":
-            self._cmd_retrain()
-        elif cmd == "cleanup":
-            self._cmd_cleanup()
-        elif cmd == "password":
-            self._cmd_password(args)
-        elif cmd == "exit" or cmd == "quit":
-            self._cmd_exit()
+        cmd_map = {
+            "start": lambda: self._cmd_start(args),
+            "stop": self._cmd_stop,
+            "status": self._cmd_status,
+            "config": lambda: self._cmd_config(args),
+            "balance": self._cmd_balance,
+            "positions": self._cmd_positions,
+            "orders": self._cmd_orders,
+            "price": lambda: self._cmd_price(args),
+            "predict": self._cmd_predict,
+            "retrain": self._cmd_retrain,
+            "cleanup": self._cmd_cleanup,
+            "password": lambda: self._cmd_password(args),
+            "setup": self._cmd_setup,
+            "help": self._cmd_help,
+            "exit": self._cmd_exit,
+        }
+
+        handler = cmd_map.get(cmd)
+        if handler:
+            handler()
         else:
             self._log(f"Unknown command: {cmd}. Type 'help' for available commands.")
 
-    async def _prompt(self, prompt_text: str, default: str = "", is_password: bool = False) -> str:
-        self._change_prompt(prompt_text, is_password=is_password)
-        self.app.invalidate()
-        self._pending_prompt = None
+    async def _prompt(self, prompt_text: str, default: str = "") -> str:
         self._prompt_event = asyncio.Event()
+        self.input_field.control.input_processors = [
+            __import__('prompt_toolkit.layout.processors', fromlist=['BeforeInput']).BeforeInput(
+                prompt_text, style='class:text-area.prompt'
+            ),
+        ]
+        self.app.invalidate()
         await self._prompt_event.wait()
-        result = self._pending_prompt
+
+        result = self._pending_prompt or default
         self._pending_prompt = None
         self._prompt_event = None
-        self._change_prompt(">>> ", is_password=False)
-        self.app.invalidate()
-        if result is None or result.strip() == "":
-            return default
-        return result.strip()
 
-    def _change_prompt(self, prompt: str, is_password: bool = False):
-        self.input_field.buffer.document = Document("", 0)
-        procs = []
-        if is_password:
-            procs.append(PasswordProcessor())
-        procs.append(BeforeInput(prompt, style='class:text-area.prompt'))
-        self.input_field.control.input_processors = procs
+        self.input_field.control.input_processors = [
+            __import__('prompt_toolkit.layout.processors', fromlist=['BeforeInput']).BeforeInput(
+                '>>> ', style='class:text-area.prompt'
+            ),
+        ]
+        self.app.invalidate()
+        return result
 
     def _cmd_setup(self):
         asyncio.ensure_future(self._setup_wizard())
@@ -847,22 +391,22 @@ class CryptoTraderApp:
             self.config_values["trading_mode"] = market
         self._log(f"  Market: {self.config_values['trading_mode']}")
 
-        api_key = await self._prompt("API Key: ", default=self.config_values["api_key"], is_password=True)
+        api_key = await self._prompt("API Key: ", default=self.config_values["api_key"])
         if api_key:
             self.config_values["api_key"] = api_key
-        self._log("  API Key: ******")
+        self._log(f"  API Key: {'***' + api_key[-4:] if len(api_key) > 4 else '***'}")
 
-        api_secret = await self._prompt("API Secret: ", default=self.config_values["api_secret"], is_password=True)
+        api_secret = await self._prompt("API Secret: ", default=self.config_values["api_secret"])
         if api_secret:
             self.config_values["api_secret"] = api_secret
-        self._log("  API Secret: ******")
+        self._log(f"  API Secret: ***")
 
-        symbol = await self._prompt(f"Symbol [BTC/USDT:USDT]: ", default=self.config_values["symbol"])
+        symbol = await self._prompt("Symbol [BTC/USDT:USDT]: ", default=self.config_values["symbol"])
         if symbol:
             self.config_values["symbol"] = symbol
         self._log(f"  Symbol: {self.config_values['symbol']}")
 
-        leverage = await self._prompt(f"Leverage (1-125) [{self.config_values['leverage']}]: ", default=str(self.config_values["leverage"]))
+        leverage = await self._prompt(f"Leverage [{self.config_values['leverage']}]: ", default=str(self.config_values["leverage"]))
         try:
             self.config_values["leverage"] = int(leverage)
         except ValueError:
@@ -883,19 +427,12 @@ class CryptoTraderApp:
             pass
         self._log(f"  Take Profit: {self.config_values['take_profit_pct']}%")
 
-        conf = await self._prompt(f"Confidence Threshold [{self.config_values['confidence']}]: ", default=str(self.config_values["confidence"]))
+        conf = await self._prompt(f"Confidence threshold [{self.config_values['confidence']}]: ", default=str(self.config_values["confidence"]))
         try:
             self.config_values["confidence"] = float(conf)
         except ValueError:
             pass
         self._log(f"  Confidence: {self.config_values['confidence']:.0%}")
-
-        interval = await self._prompt(f"Update Interval (s) [{self.config_values['interval']}]: ", default=str(self.config_values["interval"]))
-        try:
-            self.config_values["interval"] = int(interval)
-        except ValueError:
-            pass
-        self._log(f"  Interval: {self.config_values['interval']}s")
 
         self._log("\n╔══════════════════════════════════════════════╗")
         self._log("║          Setup Complete!                     ║")
@@ -924,6 +461,7 @@ Available Commands:
 Keyboard Shortcuts:
   Ctrl+T                Toggle right pane
   Ctrl+F                Search in logs
+  Ctrl+B/N              Navigate tabs left/right
   F2                    Quick setup wizard
   F5                    Start trading
   F6                    Stop trading
@@ -1229,7 +767,89 @@ Keyboard Shortcuts:
     def _cmd_exit(self):
         if self._engine_running and self.engine:
             self.engine.stop()
-        self.app.exit()
+        if self.app:
+            self.app.exit()
+
+    def _build_config(self):
+        from crypto_trader.infra.config import (
+            TradingConfig, ExchangeConfig, StrategyConfig,
+            RiskConfig, DataConfig, TradingMode, MarketMode, ExchangeType
+        )
+
+        cv = self.config_values
+        trading_mode = TradingMode.PAPER_TRADING if cv["mode"] == "paper" else TradingMode.LIVE_TRADING
+        market_mode = MarketMode.TESTNET if cv["trading_mode"] == "testnet" else MarketMode.LIVE
+
+        config = TradingConfig(
+            mode=trading_mode,
+            trading_mode=market_mode,
+            symbols=[cv["symbol"]],
+            base_currency="USDT",
+            exchange=ExchangeConfig(
+                name=ExchangeType.BINANCE,
+                api_key=cv["api_key"] or None,
+                api_secret=cv["api_secret"] or None,
+                testnet=(market_mode == MarketMode.TESTNET),
+                leverage=cv["leverage"],
+            ),
+            strategy=StrategyConfig(
+                name="ai",
+                confidence_threshold=cv["confidence"],
+                max_position_size=0.1,
+                lookback_period=500,
+            ),
+            risk=RiskConfig(
+                max_drawdown=0.15,
+                daily_loss_limit=0.05,
+                max_open_positions=3,
+                stop_loss_pct=cv["stop_loss_pct"] / 100.0,
+                take_profit_pct=cv["take_profit_pct"] / 100.0,
+            ),
+            data=DataConfig(
+                update_interval=cv["interval"],
+            ),
+        )
+        config.apply_market_mode()
+        return config
+
+    def _init_components(self, config):
+        from crypto_trader.data.market_data import MarketData, CCXTDataFeed
+        from crypto_trader.execution.exchange import CCXTExchange
+        from crypto_trader.execution.paper_exchange import PaperExchange
+        from crypto_trader.strategy.ai_strategy import AIStrategy
+        from crypto_trader.risk.risk_manager import RiskManager
+        from crypto_trader.infra.config import set_config
+
+        set_config(config)
+
+        self.data_feed = CCXTDataFeed(
+            exchange_id=config.exchange.name.value,
+            api_key=config.exchange.api_key,
+            api_secret=config.exchange.api_secret,
+            testnet=config.exchange.testnet,
+            demo_api=config.exchange.demo_api,
+        )
+        self.market_data = MarketData(self.data_feed)
+
+        if config.mode.value == "paper":
+            self.exchange = PaperExchange(
+                default_leverage=config.exchange.leverage,
+                use_api_balance=True,
+            )
+        else:
+            self.exchange = CCXTExchange(
+                exchange_id=config.exchange.name.value,
+                api_key=config.exchange.api_key,
+                api_secret=config.exchange.api_secret,
+                testnet=config.exchange.testnet,
+                leverage=config.exchange.leverage,
+                demo_api=config.exchange.demo_api,
+            )
+
+        self.strategy = AIStrategy()
+        self.risk_manager = RiskManager()
+        self.config = config
+        return True
 
     async def _run_engine_async(self):
         try:
@@ -1269,16 +889,6 @@ Keyboard Shortcuts:
                 self._return_pct = portfolio.get("total_pnl_pct", 0)
             except Exception:
                 pass
-
-        try:
-            trade_monitor_text = (
-                f"Trades: {self._trade_count}, "
-                f"Total P&L: {self._total_pnl:+.2f} USDT, "
-                f"Return %: {self._return_pct:+.2%}"
-            )
-            self.trade_monitor.log(trade_monitor_text, save_log=False)
-        except Exception:
-            pass
 
         if self._current_tab == "price" and self.data_feed:
             try:
@@ -1343,32 +953,6 @@ Keyboard Shortcuts:
             except Exception:
                 pass
 
-    async def _timer_loop(self):
-        count = 1
-        while True:
-            count += 1
-            mins, sec = divmod(count, 60)
-            hour, mins = divmod(mins, 60)
-            days, hour = divmod(hour, 24)
-            self.timer.log(f"Uptime: {days:>3} day(s), {hour:02}:{mins:02}:{sec:02}", save_log=False)
-            await asyncio.sleep(1)
-
-    async def _process_monitor_loop(self):
-        process = psutil.Process()
-        while True:
-            try:
-                with process.oneshot():
-                    threads = process.num_threads()
-                    cpu = process.cpu_percent()
-                    mem = process.memory_info()
-                    self.process_monitor.log(
-                        f"CPU: {cpu:>5}%, Mem: {mem.rss / 1024 / 1024:.0f}MB, Threads: {threads}",
-                        save_log=False,
-                    )
-            except Exception:
-                pass
-            await asyncio.sleep(1)
-
     def _authenticate(self):
         import getpass
         stored_hash = load_password_hash()
@@ -1385,50 +969,6 @@ Keyboard Shortcuts:
         print("Too many failed attempts. Exiting.")
         sys.exit(1)
 
-    def run(self):
-        self._authenticate()
-
-        self.layout = self._generate_layout()
-
-        bindings = KeyBindings()
-
-        @bindings.add('c-t')
-        def _(event):
-            self._toggle_right_pane()
-
-        @bindings.add('f2')
-        def _(event):
-            self._cmd_setup()
-
-        @bindings.add('f5')
-        def _(event):
-            self._handle_input("start")
-
-        @bindings.add('f6')
-        def _(event):
-            self._handle_input("stop")
-
-        @bindings.add('f9')
-        def _(event):
-            self._handle_input("status")
-
-        self.input_field.buffer.accept_handler = lambda buff: self._accept_input(buff)
-
-        self.app = Application(
-            layout=self.layout,
-            full_screen=True,
-            key_bindings=bindings,
-            style=Style.from_dict(UI_STYLE),
-            mouse_support=True,
-            clipboard=PyperclipClipboard(),
-        )
-
-        loop = asyncio.get_event_loop()
-        loop.create_task(self._timer_loop())
-        loop.create_task(self._process_monitor_loop())
-
-        loop.run_until_complete(self.app.run_async())
-
     def _accept_input(self, buff):
         text = self.input_field.text.strip()
         if self._prompt_event is not None:
@@ -1440,10 +980,47 @@ Keyboard Shortcuts:
             self._handle_input(text)
         return False
 
+    def run(self):
+        self._authenticate()
 
-def save_password(pw: str):
-    with open(PASSWORD_FILE, "w") as f:
-        f.write(hash_password(pw))
+        self._init_ui_components()
+
+        self.layout, self.layout_components = generate_layout(
+            input_field=self.input_field,
+            output_field=self.output_field,
+            log_field=self.log_field,
+            right_pane_toggle=self.right_pane_toggle,
+            log_field_button=self.log_field_button,
+            search_field=self.search_field,
+            timer=self.timer,
+            process_monitor=self.process_monitor,
+            trade_monitor=self.trade_monitor,
+            command_tabs=self.command_tabs,
+            get_version=self._get_version,
+            get_strategy=self._get_strategy,
+            get_mode=self._get_mode,
+            get_status=self._get_status,
+        )
+
+        bindings = load_key_bindings(self)
+
+        self.input_field.accept_handler = self._accept_input
+
+        self.app = Application(
+            layout=self.layout,
+            full_screen=True,
+            key_bindings=bindings,
+            style=load_style(),
+            mouse_support=True,
+            clipboard=PyperclipClipboard(),
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.create_task(start_timer(self.timer))
+        loop.create_task(start_process_monitor(self.process_monitor))
+        loop.create_task(start_trade_monitor(self.trade_monitor, app=self))
+
+        loop.run_until_complete(self.app.run_async())
 
 
 if __name__ == "__main__":

@@ -124,3 +124,24 @@ Thumbs.db
 *.exe
 *.bat
 build_exe.py
+
+# Runtime / temporary output files
+*_result.txt
+*_output.txt
+*_stderr.txt
+*_stdout.txt
+*_out.txt
+trading_state.json
+*.pid
+live_*.txt
+trade_*.txt
+web_body.json
+web_stderr.txt
+web_stdout.txt
+check_result.txt
+cleanup_result.txt
+test_*.txt
+
+# Reports (generated at runtime)
+reports/backtests/
+reports/training/

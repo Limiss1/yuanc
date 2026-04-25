@@ -18,6 +18,13 @@ from ..infra.logger import LogMixin
 from ..infra.proxy import detect_system_proxy
 
 
+def _disable_fetch_currencies(exchange: Any) -> None:
+    """Best-effort compatibility for ccxt clients and test doubles."""
+    exchange_has = getattr(exchange, "has", None)
+    if isinstance(exchange_has, dict):
+        exchange_has["fetchCurrencies"] = False
+
+
 class DataFeed(ABC, LogMixin):
     """Abstract base class for data feeds."""
     
@@ -109,7 +116,7 @@ class CCXTDataFeed(DataFeed):
             }
             self.exchange.urls['test'] = self.exchange.urls['api'].copy()
             self.exchange.sandbox = False
-            self.exchange.has['fetchCurrencies'] = False
+            _disable_fetch_currencies(self.exchange)
             self.logger.info(f"Using demo API for data feed: {demo_base}")
         elif testnet:
             try:
@@ -117,9 +124,9 @@ class CCXTDataFeed(DataFeed):
                 self.logger.info(f"Enabled testnet mode for {exchange_id}")
             except AttributeError:
                 self.logger.warning(f"Testnet not supported for {exchange_id}")
-            self.exchange.has['fetchCurrencies'] = False
+            _disable_fetch_currencies(self.exchange)
         else:
-            self.exchange.has['fetchCurrencies'] = False
+            _disable_fetch_currencies(self.exchange)
         
         self.exchange_id = exchange_id
         

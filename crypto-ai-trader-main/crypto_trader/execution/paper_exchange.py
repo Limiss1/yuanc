@@ -22,6 +22,13 @@ from ..infra.proxy import detect_system_proxy
 from ..infra.config import get_config
 
 
+def _disable_fetch_currencies(exchange: Any) -> None:
+    """Best-effort compatibility for ccxt clients and test doubles."""
+    exchange_has = getattr(exchange, "has", None)
+    if isinstance(exchange_has, dict):
+        exchange_has["fetchCurrencies"] = False
+
+
 class PositionSide(str, Enum):
     LONG = "long"
     SHORT = "short"
@@ -169,16 +176,16 @@ class PaperExchange(ExchangeInterface):
                     }
                     self._api_exchange.urls['test'] = self._api_exchange.urls['api'].copy()
                     self._api_exchange.sandbox = False
-                    self._api_exchange.has['fetchCurrencies'] = False
+                    _disable_fetch_currencies(self._api_exchange)
                     self.logger.info(f"PaperExchange: Using demo API: {demo_base}")
                 elif exchange_config.testnet:
                     try:
                         self._api_exchange.set_sandbox_mode(True)
                     except AttributeError:
                         pass
-                    self._api_exchange.has['fetchCurrencies'] = False
+                    _disable_fetch_currencies(self._api_exchange)
                 else:
-                    self._api_exchange.has['fetchCurrencies'] = False
+                    _disable_fetch_currencies(self._api_exchange)
                 self.logger.info(f"PaperExchange: Binance API client initialized for balance queries")
             except Exception as e:
                 self.logger.warning(f"PaperExchange: Failed to init Binance API client: {e}")

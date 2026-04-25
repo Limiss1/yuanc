@@ -3,6 +3,8 @@ Command-line interface for Crypto Trader.
 """
 
 import asyncio
+import csv
+import json
 import logging
 import sys
 from datetime import datetime
@@ -14,11 +16,63 @@ import click
 from crypto_trader.infra.config import load_config, get_config, TradingMode
 from crypto_trader.infra.logger import setup_logger
 from crypto_trader.data.market_data import create_data_feed_from_config, MarketData
+from crypto_trader.backtest import BacktestEngine
 from crypto_trader.execution.exchange import create_exchange_from_config
 from crypto_trader.execution.paper_exchange import PaperExchange
 from crypto_trader.execution.trading_engine import TradingEngine
 from crypto_trader.strategy.ai_strategy import AIStrategy
 from crypto_trader.risk.risk_manager import RiskManager
+
+
+REPORTS_DIR = Path("reports")
+BACKTEST_REPORTS_DIR = REPORTS_DIR / "backtests"
+TRAINING_REPORTS_DIR = REPORTS_DIR / "training"
+
+
+def _ensure_reports_dir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _timestamp_slug() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def _safe_symbol(symbol: str) -> str:
+    return symbol.replace("/", "-").replace(":", "-")
+
+
+def _period_to_minutes(period: str) -> int:
+    period = period.strip().lower()
+    if not period:
+        raise ValueError("Training period cannot be empty")
+
+    unit = period[-1]
+    value_str = period[:-1]
+    if not value_str.isdigit():
+        raise ValueError(f"Unsupported training period: {period}")
+
+    value = int(value_str)
+    multipliers = {
+        "m": 1,
+        "h": 60,
+        "d": 24 * 60,
+    }
+    if unit not in multipliers:
+        raise ValueError(f"Unsupported training period unit: {period}")
+    return value * multipliers[unit]
+
+
+def _write_csv_report(path: Path, rows: list[dict]) -> Path:
+    if not rows:
+        path.write_text("", encoding="utf-8")
+        return path
+
+    with open(path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
 
 
 @click.group()
@@ -97,6 +151,27 @@ def train(ctx, symbol: str, period: str):
     logger.info(f"Training AI model: symbol={symbol}, period={period}")
 
     asyncio.run(_run_training(config, symbol, period))
+
+
+@cli.command()
+@click.option('--symbol', '-s', required=True, help='Trading symbol (e.g., BTC/USDT)')
+@click.option('--period', '-p', default='30d', help='Training period (e.g., 30d, 90d)')
+@click.option('--days', '-d', type=int, default=7, help='Backtest lookback days')
+@click.option('--strategy', '-t', default='ai', help='Backtest strategy (ai, dummy)')
+@click.pass_context
+def research(ctx, symbol: str, period: str, days: int, strategy: str):
+    """Run training and backtest as one research workflow."""
+    config = ctx.obj['config']
+    config.symbols = [symbol]
+    config.data.historical_days = days
+    config.mode = TradingMode.BACKTEST
+
+    logger = logging.getLogger(__name__)
+    logger.info(
+        f"Running research workflow: symbol={symbol}, period={period}, days={days}, strategy={strategy}"
+    )
+
+    asyncio.run(_run_research(config, symbol, period, days, strategy))
 
 
 @cli.command()
@@ -243,32 +318,182 @@ async def _run_trading(config, strategy_name: str, initial_balance: float = 1000
         raise
 
 
-async def _run_backtest(config, strategy_name: str):
+async def _run_backtest(config, strategy_name: str, emit=click.echo):
     """Run backtest."""
     logger = logging.getLogger(__name__)
-    logger.info("Backtest functionality not yet implemented")
 
-    click.echo("Backtest engine coming soon!")
+    try:
+        symbol = config.symbols[0]
+        data_feed = create_data_feed_from_config()
+        market_data = MarketData(data_feed)
+        history_limit = max(config.strategy.lookback_period * 3, config.data.historical_days * 24 * 60)
+        history = await market_data.get_ohlcv(
+            symbol=symbol,
+            timeframe='1m',
+            limit=history_limit,
+            use_cache=False,
+        )
+
+        if strategy_name == 'ai':
+            strategy = AIStrategy()
+        else:
+            from crypto_trader.strategy.base import DummyStrategy
+            strategy = DummyStrategy()
+
+        backtest = BacktestEngine(
+            config=config,
+            strategy=strategy,
+            historical_data={symbol: history},
+            initial_balance=10000.0,
+        )
+        result = await backtest.run()
+        report_dir = _ensure_reports_dir(BACKTEST_REPORTS_DIR)
+        report_path = report_dir / f"{_safe_symbol(symbol)}_{strategy_name}_{_timestamp_slug()}.json"
+        trades_path = report_dir / f"{report_path.stem}_trades.csv"
+        report_payload = {
+            "generated_at": datetime.now().isoformat(),
+            "strategy": strategy_name,
+            "report_type": "backtest",
+            **result.to_dict(),
+        }
+        if backtest.exchange.trade_history:
+            report_payload["trade_count_from_history"] = len(backtest.exchange.trade_history)
+            report_payload["trades_csv"] = str(trades_path)
+            _write_csv_report(trades_path, backtest.exchange.trade_history)
+
+        report_path.write_text(
+            json.dumps(report_payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        emit(f"\n{'=' * 56}")
+        emit(f"  Backtest Complete - {result.symbol}")
+        emit(f"{'=' * 56}")
+        emit(f"Period: {result.start_time} -> {result.end_time}")
+        emit(f"Candles: {result.candles} | Warmup: {result.warmup_candles}")
+        emit(f"Initial Balance: {result.initial_balance:.2f} USDT")
+        emit(f"Final Equity:    {result.final_equity:.2f} USDT")
+        emit(f"Total PnL:       {result.total_pnl:+.2f} USDT")
+        emit(f"Strategy Return: {result.total_return_pct:+.2f}%")
+        emit(f"Buy&Hold Return: {result.buy_and_hold_return_pct:+.2f}%")
+        emit(f"Max Drawdown:    {result.max_drawdown_pct:.2f}%")
+        emit(f"Trades: {result.trade_count} | Signals: {result.signal_count}")
+        emit(
+            f"Closed Positions: {result.total_closed} | Wins: {result.win_count} | "
+            f"Losses: {result.loss_count} | Win Rate: {result.win_rate:.2%}"
+        )
+        emit(f"Open Positions at End: {result.position_count}")
+        emit(f"Report: {report_path}")
+        if backtest.exchange.trade_history:
+            emit(f"Trades:  {trades_path}")
+        emit(f"{'=' * 56}\n")
+
+        return {
+            "result": result,
+            "report_path": report_path,
+            "trades_path": trades_path if backtest.exchange.trade_history else None,
+        }
+    except Exception as e:
+        logger.error(f"Backtest failed: {e}", exc_info=True)
+        raise
 
 
-async def _run_training(config, symbol: str, period: str):
+async def _run_training(config, symbol: str, period: str, emit=click.echo):
     """Train AI model."""
     logger = logging.getLogger(__name__)
 
     try:
         data_feed = create_data_feed_from_config()
         market_data = MarketData(data_feed)
-
         strategy = AIStrategy()
+        lookback_limit = max(config.strategy.lookback_period * 3, _period_to_minutes(period))
 
-        logger.info(f"Fetching {period} of historical data for {symbol}")
+        logger.info(f"Fetching {period} of historical data for {symbol} (limit={lookback_limit})")
+        emit(f"Training AI model for {symbol} with {period} of data...")
 
-        click.echo(f"Training AI model for {symbol} with {period} of data...")
-        click.echo("Training completed successfully!")
+        history = await market_data.get_ohlcv(
+            symbol=symbol,
+            timeframe='1m',
+            limit=lookback_limit,
+            use_cache=False,
+        )
+
+        df_features = strategy.feature_engine.calculate_features(history)
+        X, y = strategy.feature_engine.prepare_training_data(df_features)
+        metrics = strategy.ai_model.train(X, y, strategy.feature_engine.feature_columns)
+
+        if not metrics.get("success"):
+            raise RuntimeError(metrics.get("error", "Training failed"))
+
+        feature_importance = strategy.feature_engine.get_feature_importance(strategy.ai_model.model)
+        top_features = sorted(
+            feature_importance.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )[:10]
+
+        report_dir = _ensure_reports_dir(TRAINING_REPORTS_DIR)
+        report_path = report_dir / f"{_safe_symbol(symbol)}_{_timestamp_slug()}.json"
+        report_payload = {
+            "generated_at": datetime.now().isoformat(),
+            "report_type": "training",
+            "symbol": symbol,
+            "period": period,
+            "candles_fetched": len(history),
+            "feature_rows": len(df_features),
+            "feature_count": len(strategy.feature_engine.feature_columns),
+            "model_path": str(strategy.ai_model.model_path),
+            "metrics": metrics,
+            "top_features": [
+                {"feature": name, "importance": importance}
+                for name, importance in top_features
+            ],
+        }
+        report_path.write_text(
+            json.dumps(report_payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        emit(f"Training completed successfully!")
+        emit(f"Samples: train={metrics['train_size']} test={metrics['test_size']}")
+        emit(
+            f"Metrics: accuracy={metrics['accuracy']:.2%}, "
+            f"precision={metrics['precision']:.2%}, "
+            f"recall={metrics['recall']:.2%}, "
+            f"f1={metrics['f1']:.2%}"
+        )
+        emit(f"Model:  {strategy.ai_model.model_path}")
+        emit(f"Report: {report_path}")
+        return {
+            "metrics": metrics,
+            "report_path": report_path,
+            "model_path": strategy.ai_model.model_path,
+        }
 
     except Exception as e:
         logger.error(f"Training failed: {e}", exc_info=True)
         raise
+
+
+async def _run_research(config, symbol: str, period: str, days: int, strategy: str, emit=click.echo):
+    """Train first, then backtest using the updated model."""
+    emit(f"\n{'=' * 56}")
+    emit(f"  Research Workflow - {symbol}")
+    emit(f"{'=' * 56}")
+
+    training = await _run_training(config, symbol, period, emit=emit)
+    backtest = await _run_backtest(config, strategy, emit=emit)
+
+    emit("Research summary:")
+    emit(f"Training report: {training['report_path']}")
+    emit(f"Backtest report: {backtest['report_path']}")
+    if backtest.get("trades_path"):
+        emit(f"Trades CSV:      {backtest['trades_path']}")
+    emit(f"{'=' * 56}\n")
+    return {
+        "training": training,
+        "backtest": backtest,
+    }
 
 
 def main():

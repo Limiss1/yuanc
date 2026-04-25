@@ -34,7 +34,8 @@ class TradingEngine(LogMixin):
         strategy: Strategy,
         exchange: ExchangeInterface,
         market_data: MarketData,
-        risk_manager: Optional[RiskManager] = None
+        risk_manager: Optional[RiskManager] = None,
+        persist_state: bool = True,
     ):
         super().__init__()
         self.config = config
@@ -43,6 +44,7 @@ class TradingEngine(LogMixin):
         self.market_data = market_data
         self.is_running = False
         self.is_paper = isinstance(exchange, PaperExchange)
+        self.persist_state = persist_state
 
         if risk_manager is None:
             risk_manager = RiskManager()
@@ -113,6 +115,8 @@ class TradingEngine(LogMixin):
         )
 
     def _save_state(self) -> None:
+        if not self.persist_state:
+            return
         try:
             state = {
                 'confidence_threshold': self._confidence_threshold,
@@ -132,6 +136,8 @@ class TradingEngine(LogMixin):
             self.logger.debug(f"Failed to save state: {e}")
 
     def _load_state(self) -> None:
+        if not self.persist_state:
+            return
         try:
             if not STATE_FILE.exists():
                 return

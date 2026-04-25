@@ -19,6 +19,13 @@ from ..infra.logger import LogMixin
 from ..infra.proxy import detect_system_proxy
 
 
+def _disable_fetch_currencies(exchange: Any) -> None:
+    """Best-effort compatibility for ccxt clients and test doubles."""
+    exchange_has = getattr(exchange, "has", None)
+    if isinstance(exchange_has, dict):
+        exchange_has["fetchCurrencies"] = False
+
+
 class OrderType(Enum):
     """Order types."""
     MARKET = "market"
@@ -177,6 +184,35 @@ class Position:
 
 class ExchangeInterface(ABC, LogMixin):
     """Abstract exchange interface."""
+
+    @staticmethod
+    def _normalize_side(side: "OrderSide | str") -> OrderSide:
+        """Accept both enum values and ccxt-style side strings."""
+        if isinstance(side, OrderSide):
+            return side
+
+        side_value = str(side).strip().lower()
+        try:
+            return OrderSide(side_value)
+        except ValueError as exc:
+            raise ValueError(f"Unsupported order side: {side}") from exc
+
+    @staticmethod
+    def _merge_order_metadata(
+        metadata: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Merge project metadata with ccxt-like params for compatibility."""
+        merged = dict(metadata or {})
+        params = params or {}
+
+        for key, value in params.items():
+            if key == "reduceOnly":
+                merged["reduce_only"] = bool(value)
+            else:
+                merged[key] = value
+
+        return merged
     
     @abstractmethod
     async def create_order(
@@ -225,6 +261,60 @@ class ExchangeInterface(ABC, LogMixin):
     async def get_ticker(self, symbol: str) -> Dict[str, Any]:
         """Get current ticker."""
         pass
+
+    async def create_market_order(
+        self,
+        symbol: str,
+        side: "OrderSide | str",
+        amount: Decimal | float,
+        price: Optional[Decimal | float] = None,
+        params: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Order:
+        """Compatibility helper for scripts that use ccxt-style APIs."""
+        return await self.create_order(
+            symbol=symbol,
+            order_type=OrderType.MARKET,
+            side=self._normalize_side(side),
+            amount=Decimal(str(amount)),
+            price=Decimal(str(price)) if price is not None else None,
+            metadata=self._merge_order_metadata(metadata, params),
+        )
+
+    async def create_limit_order(
+        self,
+        symbol: str,
+        side: "OrderSide | str",
+        amount: Decimal | float,
+        price: Decimal | float,
+        params: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Order:
+        """Compatibility helper for limit orders."""
+        return await self.create_order(
+            symbol=symbol,
+            order_type=OrderType.LIMIT,
+            side=self._normalize_side(side),
+            amount=Decimal(str(amount)),
+            price=Decimal(str(price)),
+            metadata=self._merge_order_metadata(metadata, params),
+        )
+
+    async def fetch_balance(self) -> Dict[str, Decimal]:
+        """Compatibility alias matching ccxt naming."""
+        return await self.get_balance()
+
+    async def fetch_positions(self, symbol: Optional[str] = None) -> List[Position]:
+        """Compatibility alias matching ccxt naming."""
+        return await self.get_positions(symbol)
+
+    async def fetch_ticker(self, symbol: str) -> Dict[str, Any]:
+        """Compatibility alias matching ccxt naming."""
+        return await self.get_ticker(symbol)
+
+    async def fetch_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
+        """Compatibility alias matching ccxt naming."""
+        return await self.get_open_orders(symbol)
 
 
 class CCXTExchange(ExchangeInterface):
@@ -297,7 +387,7 @@ class CCXTExchange(ExchangeInterface):
             }
             self.exchange.urls['test'] = self.exchange.urls['api'].copy()
             self.exchange.sandbox = False
-            self.exchange.has['fetchCurrencies'] = False
+            _disable_fetch_currencies(self.exchange)
             self.logger.info(f"Using demo API: {demo_base}")
         elif testnet:
             try:
@@ -305,9 +395,9 @@ class CCXTExchange(ExchangeInterface):
                 self.logger.info(f"Enabled testnet mode for {exchange_id}")
             except AttributeError:
                 self.logger.warning(f"Testnet not supported for {exchange_id}")
-            self.exchange.has['fetchCurrencies'] = False
+            _disable_fetch_currencies(self.exchange)
         else:
-            self.exchange.has['fetchCurrencies'] = False
+            _disable_fetch_currencies(self.exchange)
             self.logger.info(f"Live mode for {exchange_id}")
         
         self.exchange_id = exchange_id

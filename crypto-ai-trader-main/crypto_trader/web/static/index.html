@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Crypto Trader Research Desk</title>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <h1>Crypto Trader Research Desk</h1>
+            <p>训练、回测、报告与任务监控</p>
+          </div>
+        </div>
+        <div class="topbar-meta">
+          <div class="meta-block">
+            <label>最新刷新</label>
+            <strong id="refreshStamp">--</strong>
+          </div>
+          <div class="meta-block">
+            <label>运行模式</label>
+            <strong>Web Console</strong>
+          </div>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="control-band">
+          <div class="section-head">
+            <h2>研究工作台</h2>
+            <p>直接触发训练、回测或一键 research 工作流</p>
+          </div>
+          <form id="runForm" class="control-grid">
+            <div class="field-group compact">
+              <span class="field-label">动作</span>
+              <div class="segmented">
+                <input type="radio" id="actionResearch" name="action" value="research" checked>
+                <label for="actionResearch">Research</label>
+                <input type="radio" id="actionTrain" name="action" value="train">
+                <label for="actionTrain">Train</label>
+                <input type="radio" id="actionBacktest" name="action" value="backtest">
+                <label for="actionBacktest">Backtest</label>
+              </div>
+            </div>
+
+            <label class="field-group">
+              <span class="field-label">交易对</span>
+              <input name="symbol" value="BTC/USDT:USDT" autocomplete="off">
+            </label>
+
+            <label class="field-group">
+              <span class="field-label">训练周期</span>
+              <input name="period" value="1d" autocomplete="off">
+            </label>
+
+            <label class="field-group">
+              <span class="field-label">回测天数</span>
+              <input name="days" type="number" min="1" max="365" value="1">
+            </label>
+
+            <div class="field-group compact">
+              <span class="field-label">策略</span>
+              <div class="segmented">
+                <input type="radio" id="strategyAi" name="strategy" value="ai" checked>
+                <label for="strategyAi">AI</label>
+                <input type="radio" id="strategyDummy" name="strategy" value="dummy">
+                <label for="strategyDummy">Dummy</label>
+              </div>
+            </div>
+
+            <div class="control-actions">
+              <button class="primary-action" type="submit">运行工作流</button>
+              <button class="ghost-action" type="button" id="refreshButton">刷新面板</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="trading-band">
+          <div class="section-head">
+            <h2>自动 AI 交易</h2>
+            <p>网页直接启动自动策略，默认纸面盘，实盘需明确确认</p>
+          </div>
+          <div class="trading-grid">
+            <form id="tradingForm" class="trading-form">
+              <div class="field-group compact">
+                <span class="field-label">模式</span>
+                <div class="segmented">
+                  <input type="radio" id="tradeModePaper" name="tradeMode" value="paper" checked>
+                  <label for="tradeModePaper">Paper</label>
+                  <input type="radio" id="tradeModeLive" name="tradeMode" value="live">
+                  <label for="tradeModeLive">Live</label>
+                </div>
+              </div>
+              <label class="field-group">
+                <span class="field-label">交易对</span>
+                <input name="tradeSymbol" value="BTC/USDT:USDT" autocomplete="off">
+              </label>
+              <label class="field-group">
+                <span class="field-label">初始资金</span>
+                <input name="tradeBalance" type="number" min="10" step="10" value="10000">
+              </label>
+              <label class="field-group">
+                <span class="field-label">杠杆</span>
+                <input name="tradeLeverage" type="number" min="1" max="125" value="10">
+              </label>
+              <label class="field-group">
+                <span class="field-label">置信阈值</span>
+                <input name="tradeConfidence" type="number" min="0.1" max="0.99" step="0.01" value="0.60">
+              </label>
+              <label class="field-group">
+                <span class="field-label">周期(秒)</span>
+                <input name="tradeInterval" type="number" min="5" max="3600" value="60">
+              </label>
+              <label class="field-group">
+                <span class="field-label">止损比例</span>
+                <input name="tradeSl" type="number" min="0.0001" max="0.5" step="0.0001" value="0.0015">
+              </label>
+              <label class="field-group">
+                <span class="field-label">止盈比例</span>
+                <input name="tradeTp" type="number" min="0.0001" max="1" step="0.0001" value="0.003">
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="confirmLive">
+                <span>我确认开启实盘自动交易</span>
+              </label>
+              <div class="control-actions">
+                <button class="primary-action" type="submit">启动自动交易</button>
+                <button class="ghost-action" type="button" id="stopTradingButton">停止</button>
+              </div>
+            </form>
+
+            <div class="trading-status-panel">
+              <div class="status-hero">
+                <div>
+                  <span class="eyebrow">引擎状态</span>
+                  <strong id="tradingRunningState">STOPPED</strong>
+                </div>
+                <span id="tradingModePill" class="status-pill queued">paper</span>
+              </div>
+              <div class="detail-stats trading-stats">
+                <article class="detail-stat"><label>权益</label><strong id="tradingEquity">--</strong></article>
+                <article class="detail-stat"><label>PnL</label><strong id="tradingPnl">--</strong></article>
+                <article class="detail-stat"><label>交易数</label><strong id="tradingTradeCount">--</strong></article>
+                <article class="detail-stat"><label>胜率</label><strong id="tradingWinRate">--</strong></article>
+              </div>
+              <pre id="tradingLog" class="job-log trading-log">等待启动自动交易…</pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="metrics-band">
+          <div class="section-head">
+            <h2>最新结果</h2>
+            <p>最近一次训练与回测的关键信号</p>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-tile accent-train">
+              <span class="eyebrow">训练准确率</span>
+              <strong id="latestAccuracy">--</strong>
+              <small id="latestTrainMeta">等待训练报告</small>
+            </article>
+            <article class="metric-tile accent-return">
+              <span class="eyebrow">策略收益</span>
+              <strong id="latestReturn">--</strong>
+              <small id="latestBacktestMeta">等待回测报告</small>
+            </article>
+            <article class="metric-tile accent-risk">
+              <span class="eyebrow">最大回撤</span>
+              <strong id="latestDrawdown">--</strong>
+              <small id="latestRiskMeta">风险尚未计算</small>
+            </article>
+            <article class="metric-tile accent-trades">
+              <span class="eyebrow">成交笔数</span>
+              <strong id="latestTrades">--</strong>
+              <small id="latestTradeMeta">尚无交易明细</small>
+            </article>
+          </div>
+          <canvas id="performanceCanvas" class="performance-canvas" width="1200" height="180"></canvas>
+        </section>
+
+        <section class="content-band">
+          <div class="reports-panel">
+            <div class="section-head slim">
+              <h2>报告库</h2>
+              <p>点击左侧条目查看详情</p>
+            </div>
+
+            <div class="report-columns">
+              <div class="report-column">
+                <div class="column-head">
+                  <h3>训练报告</h3>
+                  <span id="trainingCount">0</span>
+                </div>
+                <div id="trainingList" class="report-list"></div>
+              </div>
+              <div class="report-column">
+                <div class="column-head">
+                  <h3>回测报告</h3>
+                  <span id="backtestCount">0</span>
+                </div>
+                <div id="backtestList" class="report-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-panel">
+            <div class="section-head slim">
+              <h2>详情</h2>
+              <p id="detailSubtitle">选中一份报告后展示摘要与交易明细</p>
+            </div>
+            <div id="detailStats" class="detail-stats"></div>
+            <div class="detail-grid">
+              <section class="detail-block">
+                <h3>摘要</h3>
+                <pre id="detailJson" class="detail-json">等待选择报告…</pre>
+              </section>
+              <section class="detail-block">
+                <h3>交易明细</h3>
+                <div id="tradeTable" class="trade-table empty">暂无逐笔成交</div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="jobs-band">
+          <div class="section-head slim">
+            <h2>任务监控</h2>
+            <p>查看最近触发的后台工作流与输出日志</p>
+          </div>
+          <div class="jobs-layout">
+            <div id="jobList" class="job-list"></div>
+            <pre id="jobLog" class="job-log">等待任务…</pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
